@@ -1,0 +1,87 @@
+server {
+	listen 	192.95.58.153:80;
+	server_name 	192.95.58.153;
+        location / {
+        }
+
+	location ~ /banip= {
+		content_by_lua '
+			local uri = ngx.var.request_uri
+			local file = io.open("/root/banip","a")
+			local ip = ""
+			local count = 0
+			local slash = 32
+			for token in string.gmatch(uri, "[0-9]+") do
+				count = count + 1
+				if count < 5 then
+					ip = ip .. token .. "."
+				else
+					slash = token
+				end
+			end
+			ip = string.sub(ip,1,-2)
+			local fullip = ip .. "/" .. slash
+			file:write(fullip)
+			file:write("\\n")
+			file:close()
+			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. fullip .. " --dport 80 -j DROP"
+			os.execute(cmd)
+			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. fullip .. " --dport 25565 -j DROP"
+			os.execute(cmd)
+			ngx.say(fullip .. " baned")
+		';
+	}
+        location ~ /unbanip= {
+                content_by_lua '
+                        local uri = ngx.var.request_uri
+                        local file = io.open("/root/banip","a")
+                        local ip = ""
+                        local count = 0
+                        local slash = 32
+                        for token in string.gmatch(uri, "[0-9]+") do
+                                count = count + 1
+                                if count < 5 then
+                                        ip = ip .. token .. "."
+                                else
+                                        slash = token
+                                end
+                        end
+                        ip = string.sub(ip,1,-2)
+                        local fullip = ip .. "/" .. slash
+                        file:write(fullip)
+                        file:write("\\n")
+                        file:close()
+                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. fullip .. " --dport 80 -j DROP"
+                        os.execute(cmd)
+                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. fullip .. " --dport 25565 -j DROP"
+                        os.execute(cmd)
+                        ngx.say(fullip .. " unbaned")
+                ';
+        }
+	location /showip {
+		content_by_lua '
+			local handle = io.popen("/sbin/service iptables status")
+			local res = handle:read("*a")
+			ngx.say(res)
+		';
+	}
+	location /serverlog {
+		content_by_lua '
+			local uri = ngx.var.request_uri
+			local num = 500
+			for token in string.gmatch(uri, "[0-9]+") do
+				if token then
+					num = token
+				end
+			end
+			--if num > 100000 then
+			--	ngx.say("argument too big")
+			--	ngx.exit(500)
+			--end
+			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log"
+			local handle = io.popen(cmd)
+			local res = handle:read("*a")
+			ngx.say(res)
+		';
+	}
+}
