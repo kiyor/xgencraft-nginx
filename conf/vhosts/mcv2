@@ -81,6 +81,22 @@ server {
 		';
 	}
 
+	location /showuser {
+		default_type 'text/plain';
+		content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/masterauth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+                        local handle = io.popen("cat /root/key")
+                        local res = handle:read("*a")
+                        ngx.say(res)
+		';
+	}
+			
+
 	location /banip {
 		default_type 'text/plain';
 		content_by_lua '
