@@ -130,11 +130,11 @@ server {
 			file:write("\\n")
 			file:close()
 			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
-			--os.execute(cmd)
-			ngx.say(cmd)
+			os.execute(cmd)
+			--ngx.say(cmd)
 			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
-			--os.execute(cmd)
-			ngx.say(cmd)
+			os.execute(cmd)
+			--ngx.say(cmd)
 			ngx.say(ip .. " baned")
 		';
 	}
@@ -171,11 +171,11 @@ server {
                         file:write("\\n")
                         file:close()
                         cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
-                        --os.execute(cmd)
-                        ngx.say(cmd)
+                        os.execute(cmd)
+                        --ngx.say(cmd)
                         cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
-                        --os.execute(cmd)
-                        ngx.say(cmd)
+                        os.execute(cmd)
+                        --ngx.say(cmd)
                         ngx.say(ip .. " unbaned")
                 ';
         }
