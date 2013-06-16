@@ -14,6 +14,11 @@ xgencraft-nginx
 
     curl manager.xgencraft.com/delkey?key=${yourmasterkey}&user=${username}
     
+显示op用户以及key
+
+    user manager.xgencraft.com/showuser?key=${yourmasterkey}
+    
+    
 #for ops
 ban单个ip: 1.1.1.1(请勿使用127.x.x.x进行测试)
 
