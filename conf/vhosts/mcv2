@@ -1,73 +1,195 @@
 server {
 	listen	192.95.58.153:80;
 	server_name manager.xgencraft.com;
+	charset UTF-8;
         location / {
         }
 
-	location ~ /banip= {
+	location /auth {
+		default_type 'text/plain';
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
+			local key = args["key"]
+			for line in io.lines("/root/key") do
+				line = string.sub(line, 1, 8)
+				if key == line then
+					ngx.exit(200)
+				end
+			end
+			ngx.exit(403)
+		';
+	}
+
+	location /masterauth {
+                default_type 'text/plain';
+                content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        for line in io.lines("/root/masterkey") do
+                                line = string.sub(line, 1, 8)
+                                if key == line then
+                                        ngx.exit(200)
+                                end
+                        end
+                        ngx.exit(403)
+                ';
+	}
+
+	location /genkey {
+		default_type 'text/plain';
+		content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/masterauth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+			local user = args["user"]
+			if not user then
+				ngx.say("you must define user")
+				ngx.exit(200)
+			end
+                        local handle = io.popen("/usr/local/bin/genkey")
+                        local genkey = handle:read("*a")
+			genkey = string.sub(genkey, 1, 8)
+                        local file = io.open("/root/key","a")
+                        file:write(genkey .. "\\t" .. user .. "\\n")
+                        file:close()
+			ngx.say("name: " .. user)
+			ngx.say("key: " .. genkey)
+		';
+	}
+
+	location /delkey {
+                default_type 'text/plain';
+                content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/masterauth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+                        local user = args["user"]
+                        if not user then
+                                ngx.say("you must define user")
+                                ngx.exit(200)
+                        end
+			cmd = "sed -i \'/" .. user .. "/d\' /root/key"
+			--ngx.say(cmd)
+			os.execute(cmd)
+			ngx.say("user " .. user .. " deleted")
+		';
+	}
+
+	location /banip {
+		default_type 'text/plain';
+		content_by_lua '
+			local args = ngx.req.get_uri_args()
+			local key = args["key"]
+			local auth = ngx.location.capture("/auth?key=" .. key)
+			if auth.status == ngx.HTTP_FORBIDDEN then
+				ngx.exit(403)
+			end
 			local ip = args["ip"]
+			local index = 1
+			local ipObj = {}
+			for token in string.gmatch(ip,"[0-9]+") do
+				if tonumber(token) > 255 then
+					ngx.exit(200)
+				end
+				ipObj[index] = tonumber(token)
+				index = index + 1
+			end
+			if not ipObj[4] or ipObj[6] then
+				ngx.exit(200)
+			end
+			if ipObj[1] == 127 then
+				ngx.exit(200)
+			end
+			if ipObj[5] and ipObj[5] <= 20 then
+				ngx.exit(200)
+			end
 			local file = io.open("/root/banip","a")
 			file:write(ip)
 			file:write("\\n")
 			file:close()
-			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. fullip .. " --dport 80 -j DROP"
+			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
 			--os.execute(cmd)
 			ngx.say(cmd)
-			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. fullip .. " --dport 25565 -j DROP"
+			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
 			--os.execute(cmd)
 			ngx.say(cmd)
-			ngx.say(fullip .. " baned")
+			ngx.say(ip .. " baned")
 		';
 	}
-        location ~ /unbanip= {
+        location /unbanip {
+		more_set_headers 'Content-Type: text/plain';
                 content_by_lua '
-                        local uri = ngx.var.request_uri
-                        local file = io.open("/root/banip","a")
-                        local ip = ""
-                        local count = 0
-                        local slash = 32
-                        for token in string.gmatch(uri, "[0-9]+") do
-                                count = count + 1
-                                if count < 5 then
-                                        ip = ip .. token .. "."
-                                else
-                                        slash = token
-                                end
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/auth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
                         end
-                        ip = string.sub(ip,1,-2)
-                        local fullip = ip .. "/" .. slash
-                        file:write(fullip)
+                        local ip = args["ip"]
+                        local index = 1
+                        local ipObj = {}
+                        for token in string.gmatch(ip,"[0-9]+") do
+                                if tonumber(token) > 255 then
+                                        ngx.exit(200)
+                                end
+                                ipObj[index] = tonumber(token)
+                                index = index + 1
+                        end
+                        if not ipObj[4] or ipObj[6] then
+                                ngx.exit(200)
+                        end
+                        if ipObj[1] == 127 then
+                                ngx.exit(200)
+                        end
+                        if ipObj[5] and ipObj[5] <= 20 then
+                                ngx.exit(200)
+                        end
+                        local file = io.open("/root/banip","a")
+                        file:write(ip)
                         file:write("\\n")
                         file:close()
-                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. fullip .. " --dport 80 -j DROP"
-                        os.execute(cmd)
-                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. fullip .. " --dport 25565 -j DROP"
-                        os.execute(cmd)
-                        ngx.say(fullip .. " unbaned")
+                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
+                        --os.execute(cmd)
+                        ngx.say(cmd)
+                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
+                        --os.execute(cmd)
+                        ngx.say(cmd)
+                        ngx.say(ip .. " unbaned")
                 ';
         }
 	location /showip {
+		default_type 'text/plain';
 		content_by_lua '
+			local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/auth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
 			local handle = io.popen("/sbin/service iptables status")
 			local res = handle:read("*a")
 			ngx.say(res)
 		';
 	}
 	location /serverlog {
+		default_type 'text/plain';
 		content_by_lua '
-			local uri = ngx.var.request_uri
-			local num = 500
-			for token in string.gmatch(uri, "[0-9]+") do
-				if token then
-					num = token
-				end
+			local args = ngx.req.get_uri_args()
+			local num = args["num"]
+			num = tonumber(num)
+			if not num then
+				num = 500
 			end
-			--if num > 100000 then
-			--	ngx.say("argument too big")
-			--	ngx.exit(500)
-			--end
+			if num > 100000 then
+				ngx.say("num too big")
+				ngx.exit(200)
+			end
 			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log"
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
