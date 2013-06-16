@@ -10,6 +10,12 @@ server {
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
 			local key = args["key"]
+                        for line in io.lines("/root/masterkey") do
+                                line = string.sub(line, 1, 8)
+                                if key == line then
+                                        ngx.exit(200)
+                                end
+                        end
 			for line in io.lines("/root/key") do
 				line = string.sub(line, 1, 8)
 				if key == line then
