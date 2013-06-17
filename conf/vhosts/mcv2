@@ -212,7 +212,7 @@ server {
 				ngx.say("num too big")
 				ngx.exit(200)
 			end
-			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log"
+			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE"
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
 			ngx.say(res)
