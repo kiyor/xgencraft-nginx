@@ -212,7 +212,19 @@ server {
 				ngx.say("num too big")
 				ngx.exit(200)
 			end
-			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE"
+			local grepor = args["grepor"]
+			local greporcmd = "\\|egrep \\"("
+			if grepor then
+				for token in string.gmatch(grepor, "[a-zA-Z]+") do
+					greporcmd = greporcmd .. token .. "\|"
+				end
+				greporcmd = string.sub(greporcmd, 1, -2)
+				greporcmd = greporcmd .. ")\\""
+			else
+				greporcmd = ""
+			end
+			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE" .. greporcmd
+			ngx.say(cmd)
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
 			ngx.say(res)
