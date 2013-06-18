@@ -63,7 +63,7 @@ unban
 
 如:
 
-    curl 'manager.xgencraft.com/serverlog?num=100000&grepor=gold,diamond&grepand=someone,8[0-9]'
+    curl 'manager.xgencraft.com/serverlog?num=100000&grepor=gold,diamond&grepand=someone,8[0-9]%'
 
 #可以直接用浏览器代替curl
 
