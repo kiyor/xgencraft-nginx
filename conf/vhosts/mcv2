@@ -256,12 +256,14 @@ server {
 					line = string.gsub(line,"%[0\;%d+\;%d+m","")
 					line = string.gsub(line,"%[m","")
 					if not string.match(line,"Connection timed out") then
-						if string.match(line,"issued server command") then
+						if string.match(line,"/give ") then
+							ngx.say("<font color=\\"F3F781\\">" .. line .. "</font><br>")
+						elseif string.match(line,"issued server command") then
 							ngx.say("<font color=\\"8181F7\\">" .. line .. "</font><br>")
 						elseif string.match(line,"%[Prism%]") then
 							ngx.say("<font color=\\"FA5882\\">" .. line .. "</font><br>")
-						elseif string.match(line,"WARNING:") then
-							ngx.say("<font color=\\"FF0000\\">" .. line .. "</font><br>")
+						elseif string.match(line,"WARNING") then
+							ngx.say("<font color=\\"81F7F3\\"><strong>" .. line .. "</strong></font><br>")
 						elseif string.match(line,"AuthMe") then
 							ngx.say("<font color=\\"A4A4A4\\">" .. line .. "</font><br>")
 						else
