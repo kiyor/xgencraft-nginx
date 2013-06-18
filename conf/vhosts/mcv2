@@ -236,7 +236,24 @@ server {
 			--ngx.say(cmd)
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
-			ngx.say(res)
+			local agent = ngx.var.http_user_agent
+			--ngx.say(agent)
+			if string.match(agent,"curl") then
+				ngx.say(res)
+			else
+				local filename = os.tmpname()
+				filename = "/dev/shm" .. filename
+				os.execute("mkdir -p /dev/shm/tmp")
+				local fh = io.open(filename,"w")
+				fh:write(res)
+				fh:close()
+				for line in io.lines(filename) do
+					line = string.gsub(line,"%[0\;%d+\;%d+m","")
+					line = string.gsub(line,"%[m","")
+					ngx.say(line)
+				end
+				os.remove(filename)
+			end
 		';
 	}
 }
