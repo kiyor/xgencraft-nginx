@@ -60,6 +60,7 @@ unban
     curl 'manager.xgencraft.com/serverlog?num=1000&grepor=a,b&grepand=c,d'
 
 **以上服务器记录指令可以任意组合**
+
 如:
 
     curl 'manager.xgencraft.com/serverlog?num=100000&grepor=gold,diamond&grepand=someone'
