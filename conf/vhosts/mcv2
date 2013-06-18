@@ -249,7 +249,7 @@ server {
 				fh:write(res)
 				fh:close()
 				ngx.say("<html>")
-				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\"><script type=\\"text/javascript\\">function move moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",1000);}</script></head>")
+				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\"><script type=\\"text/javascript\\">function moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",10000);}</script></head>")
 				ngx.say("<body bgcolor=\\"333333\\" onLoad=\\"moveWin();\\">")
 				ngx.say("<font face=\\"arial\\" color=\\"FFFFF4\\">")
 				for line in io.lines(filename) do
@@ -266,6 +266,9 @@ server {
 							ngx.say("<font color=\\"81F7F3\\"><strong>" .. line .. "</strong></font><br>")
 						elseif string.match(line,"AuthMe") then
 							ngx.say("<font color=\\"A4A4A4\\">" .. line .. "</font><br>")
+						elseif string.match(line,"/%d+\.%d+\.%d+\.%d+\:") then
+							line = string.gsub(line,"/(%d+\.%d+\.%d+\.%d+)\:","/<font color=\\"FF0000\\"><strong>%1</strong></font>\:")
+							ngx.say(line .. "<br>")
 						else
 							ngx.say(line .. "<br>")
 						end
