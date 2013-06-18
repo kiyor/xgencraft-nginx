@@ -50,7 +50,16 @@ unban
 显示当前服务器记录1000行
 
     curl 'manager.xgencraft.com/serverlog?num=1000'
+    
+显示当前服务器记录1000行,带有关键字a或关键字b
 
+    curl 'manager.xgencraft.com/serverlog?num=1000&grepor=a,b'
+    
+显示当前服务器记录1000行,带有关键字a或关键字b并且必须包含关键字c和关键字d
+
+    curl 'manager.xgencraft.com/serverlog?num=1000&grepor=a,b&grepand=c,d'
+
+**以上服务器记录指令可以任意组合**
 
 #可以直接用浏览器代替curl
 
