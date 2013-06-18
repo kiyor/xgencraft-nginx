@@ -233,7 +233,7 @@ server {
 				grepandcmd = ""
 			end
 			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE" .. greporcmd .. grepandcmd
-			ngx.say(cmd)
+			--ngx.say(cmd)
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
 			ngx.say(res)
