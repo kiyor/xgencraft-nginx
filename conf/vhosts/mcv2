@@ -224,17 +224,15 @@ server {
 				greporcmd = ""
 			end
 			local grepand = args["grepand"]
-			local grepandcmd = "\\|"
+			local grepandcmd = ""
 			if grepand then
 				for token in string.gmatch(grepand, "[a-zA-Z]+") do
-					grepandcmd = "grep " .. token .. "\|"
+					grepandcmd = grepandcmd .. "|grep " .. token
 				end
-				grepandcmd = string.sub(grepandcmd, 1, -2)
 			else
 				grepandcmd = ""
 			end
 			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE" .. greporcmd .. grepandcmd
-			ngx.say(cmd)
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
 			ngx.say(res)
