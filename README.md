@@ -71,4 +71,4 @@ unban
 
     manager.xgencraft.com/serverlog
 
-[0;33;22m这类乱码是颜色代码,可以无视,也可以复制粘贴去notepad++,软件会无视
+颜色将无法在浏览器中显示(也许未来可以添加)
