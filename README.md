@@ -61,6 +61,10 @@ unban
 
 **以上服务器记录指令可以任意组合**
 
+如:
+
+    curl 'manager.xgencraft.com/serverlog?num=100000&grepor=gold,diamond&grepand=someone'
+
 #可以直接用浏览器代替curl
 
 比如在浏览器里直接输入
