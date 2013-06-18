@@ -203,10 +203,13 @@ server {
 		default_type 'text/html';
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
+			local agent = ngx.var.http_user_agent
 			local num = args["num"]
 			num = tonumber(num)
-			if not num then
-				num = 500
+			if not num and string.match(agent,"Mobile") then
+				num = 32
+			elseif not num then
+				num = 100
 			end
 			if num > 100000 then
 				ngx.say("num too big")
@@ -236,8 +239,6 @@ server {
 			--ngx.say(cmd)
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
-			local agent = ngx.var.http_user_agent
-			--ngx.say(agent)
 			if string.match(agent,"curl") then
 				ngx.say(res)
 			else
@@ -247,13 +248,29 @@ server {
 				local fh = io.open(filename,"w")
 				fh:write(res)
 				fh:close()
+				ngx.say("<html>")
+				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\"><script type=\\"text/javascript\\">function move moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",1000);}</script></head>")
+				ngx.say("<body bgcolor=\\"333333\\" onLoad=\\"moveWin();\\">")
+				ngx.say("<font face=\\"arial\\" color=\\"FFFFF4\\">")
 				for line in io.lines(filename) do
 					line = string.gsub(line,"%[0\;%d+\;%d+m","")
 					line = string.gsub(line,"%[m","")
 					if not string.match(line,"Connection timed out") then
-						ngx.say(line .. "<br>")
+						if string.match(line,"issued server command") then
+							ngx.say("<font color=\\"8181F7\\">" .. line .. "</font><br>")
+						elseif string.match(line,"%[Prism%]") then
+							ngx.say("<font color=\\"FA5882\\">" .. line .. "</font><br>")
+						elseif string.match(line,"WARNING:") then
+							ngx.say("<font color=\\"FF0000\\">" .. line .. "</font><br>")
+						elseif string.match(line,"AuthMe") then
+							ngx.say("<font color=\\"A4A4A4\\">" .. line .. "</font><br>")
+						else
+							ngx.say(line .. "<br>")
+						end
 					end
 				end
+				ngx.say("</font>")
+				ngx.say("</body></html>")
 				os.remove(filename)
 			end
 		';
