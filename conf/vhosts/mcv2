@@ -215,7 +215,7 @@ server {
 			local grepor = args["grepor"]
 			local greporcmd = "\\|egrep \\"("
 			if grepor then
-				for token in string.gmatch(grepor, "[a-zA-Z]+") do
+				for token in string.gmatch(grepor, "[a-zA-Z0-9]+") do
 					greporcmd = greporcmd .. token .. "\|"
 				end
 				greporcmd = string.sub(greporcmd, 1, -2)
@@ -226,7 +226,7 @@ server {
 			local grepand = args["grepand"]
 			local grepandcmd = ""
 			if grepand then
-				for token in string.gmatch(grepand, "[a-zA-Z]+") do
+				for token in string.gmatch(grepand, "[a-zA-Z0-9]+") do
 					grepandcmd = grepandcmd .. "|grep " .. token
 				end
 			else
