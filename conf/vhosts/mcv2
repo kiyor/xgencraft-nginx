@@ -200,7 +200,7 @@ server {
 		';
 	}
 	location /serverlog {
-		default_type 'text/plain';
+		default_type 'text/html';
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
 			local num = args["num"]
@@ -250,7 +250,9 @@ server {
 				for line in io.lines(filename) do
 					line = string.gsub(line,"%[0\;%d+\;%d+m","")
 					line = string.gsub(line,"%[m","")
-					ngx.say(line)
+					if not string.match(line,"Connection timed out") then
+						ngx.say(line .. "<br>")
+					end
 				end
 				os.remove(filename)
 			end
