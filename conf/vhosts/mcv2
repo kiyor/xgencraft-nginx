@@ -249,8 +249,17 @@ server {
 				fh:write(res)
 				fh:close()
 				ngx.say("<html>")
-				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\"><script type=\\"text/javascript\\">function moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",10000);}</script></head>")
-				ngx.say("<body bgcolor=\\"333333\\" onLoad=\\"moveWin();\\">")
+				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\">")
+				if num <= 1000 then
+					ngx.say("<script type=\\"text/javascript\\">function moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",10000);}</script>")
+				else
+					ngx.say("</head>")
+				end
+				if num <= 1000 then
+					ngx.say("<body bgcolor=\\"333333\\" onLoad=\\"moveWin();\\">")
+				else
+					ngx.say("<body bgcolor=\\"333333\\">")
+				end
 				ngx.say("<font face=\\"arial\\" color=\\"FFFFF4\\">")
 				for line in io.lines(filename) do
 					line = string.gsub(line,"%[0\;%d+\;%d+m","")
