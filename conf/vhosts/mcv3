@@ -261,12 +261,12 @@ server {
 				fh:close()
 				ngx.say("<html>")
 				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\">")
-				if num <= 1000 then
+				if num <= 500 then
 					ngx.say("<script type=\\"text/javascript\\">function moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",10000);}</script>")
 				else
 					ngx.say("</head>")
 				end
-				if num <= 1000 then
+				if num <= 500 then
 					ngx.say("<body bgcolor=\\"333333\\" onLoad=\\"moveWin();\\">")
 				else
 					ngx.say("<body bgcolor=\\"333333\\">")
