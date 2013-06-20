@@ -303,7 +303,7 @@ server {
 							ngx.say(line .. "<br>")
 							userip = string.match(line,"%d+%.%d+%.%d+%.%d+")
 							--ngx.say(userip .. "<br>")
-							sqlcmd = "select country, city from location where locId = \\(select locId from blocks where endIpNum <= inet_aton\\(\\"" .. userip .. "\\"\\) order by endIpNum desc limit 1\\)"
+							sqlcmd = "select country, city from location where locId = \\(select locId from blocks where endIpNum >= inet_aton\\(\\"" .. userip .. "\\"\\) order by endIpNum asc limit 1\\)"
 							local res, err, errno, sqlstate =
 								db:query(sqlcmd)
 							ngx.say("location: " .. cjson.encode(res) .. "<br>")
