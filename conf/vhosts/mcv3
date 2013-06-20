@@ -1,3 +1,4 @@
+lua_package_path "/var/lib/github/lua-resty-mysql/lib/?.lua;;";
 server {
 	listen	192.95.58.153:80;
 	server_name manager.xgencraft.com;
@@ -203,6 +204,16 @@ server {
 		default_type 'text/html';
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+			local admin = 0
+			if key then
+                        	local auth = ngx.location.capture("/auth?key=" .. key)
+                        	if auth.status == ngx.HTTP_FORBIDDEN then
+                                	admin = 0
+				else
+					admin = 1
+                        	end
+			end
 			local agent = ngx.var.http_user_agent
 			local num = args["num"]
 			num = tonumber(num)
@@ -261,6 +272,18 @@ server {
 					ngx.say("<body bgcolor=\\"333333\\">")
 				end
 				ngx.say("<font face=\\"arial\\" color=\\"FFFFF4\\">")
+				local mysql = require "resty.mysql"
+				local cjson = require "cjson"
+				local db, err = mysql:new()
+				db:set_timeout(1000)
+				local ok, err, errno, sqlstate = db:connect{
+					host = "127.0.0.1",
+					port = 3306,
+					database = "geoip",
+					user = "geo",
+					password = "",
+					max_packet_size = 1024 * 1024 }
+				local sqlcmd = ""
 				for line in io.lines(filename) do
 					line = string.gsub(line,"%[0\;%d+\;%d+m","")
 					line = string.gsub(line,"%[m","")
@@ -275,18 +298,77 @@ server {
 							ngx.say("<font color=\\"81F7F3\\"><strong>" .. line .. "</strong></font><br>")
 						elseif string.match(line,"AuthMe") then
 							ngx.say("<font color=\\"A4A4A4\\">" .. line .. "</font><br>")
-						elseif string.match(line,"/%d+\.%d+\.%d+\.%d+\:") then
-							line = string.gsub(line,"/(%d+\.%d+\.%d+\.%d+)\:","/<font color=\\"FF0000\\"><strong>%1</strong></font>\:")
+						elseif string.match(line,"/%d+%.%d+%.%d+%.%d+\:") then
+							line = string.gsub(line,"/(%d+%.%d+%.%d+%.%d+)\:","/<font color=\\"FF0000\\"><strong>%1</strong></font>\:")
 							ngx.say(line .. "<br>")
+							userip = string.match(line,"%d+%.%d+%.%d+%.%d+")
+							--ngx.say(userip .. "<br>")
+							sqlcmd = "select country, city from location where locId = \\(select locId from blocks where startIpNum < inet_aton\\(\\"" .. userip .. "\\"\\) order by startIpNum desc limit 1\\)"
+							local res, err, errno, sqlstate =
+								db:query(sqlcmd)
+							ngx.say("location: " .. cjson.encode(res) .. "<br>")
 						else
 							ngx.say(line .. "<br>")
 						end
 					end
 				end
+				local ok, err = db:set_keepalive(0, 100)
 				ngx.say("</font>")
 				ngx.say("</body></html>")
 				os.remove(filename)
 			end
 		';
 	}
+    location /test {
+        content_by_lua '
+            local mysql = require "resty.mysql"
+            local db, err = mysql:new()
+            if not db then
+                ngx.say("failed to instantiate mysql: ", err)
+                return
+            end
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect{
+                host = "127.0.0.1",
+                port = 3306,
+                database = "test",
+                user = "test",
+                password = "",
+                max_packet_size = 1024 * 1024 }
+
+            ngx.say("connected to mysql.")
+
+            res, err, errno, sqlstate =
+                db:query("create table cats "
+                         .. "(id serial primary key, "
+                         .. "name varchar(5))")
+
+            ngx.say("table cats created.")
+
+            res, err, errno, sqlstate =
+                db:query("insert into cats (name) "
+                         .. "values (\'Bob\'),(\'\'),(null)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows, " rows inserted into table cats ",
+                    "(last insert id: ", res.insert_id, ")")
+
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc")
+
+	    --ngx.say(res)
+            local cjson = require "cjson"
+            ngx.say("result: ", cjson.encode(res))
+
+            -- put it into the connection pool of size 100,
+            -- with 0 idle timeout
+            local ok, err = db:set_keepalive(0, 100)
+
+        ';
+    }
 }
