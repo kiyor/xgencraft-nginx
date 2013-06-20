@@ -1,6 +1,11 @@
 xgencraft-nginx
 ===============
 
+you must change
+/src/core/ngx_conf_file.c:#define NGX_CONF_BUFFER  4096
+to
+/src/core/ngx_conf_file.c:#define NGX_CONF_BUFFER  more then 4096
+
 #api docs
 更新后开启验证,只有部分权限公开,如查看serverlog.
 验证只需添加key=${yourkey}
