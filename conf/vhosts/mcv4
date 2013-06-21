@@ -1,0 +1,384 @@
+lua_package_path "/var/lib/github/lua-resty-mysql/lib/?.lua;;";
+server {
+	listen	192.95.58.153:80;
+	server_name manager.xgencraft.com;
+	charset UTF-8;
+        location / {
+        }
+
+	location /auth {
+		default_type 'text/plain';
+		content_by_lua '
+			local args = ngx.req.get_uri_args()
+			local key = args["key"]
+                        for line in io.lines("/root/masterkey") do
+                                line = string.sub(line, 1, 8)
+                                if key == line then
+                                        ngx.exit(200)
+                                end
+                        end
+			for line in io.lines("/root/key") do
+				line = string.sub(line, 1, 8)
+				if key == line then
+					ngx.exit(200)
+				end
+			end
+			ngx.exit(403)
+		';
+	}
+
+	location /masterauth {
+                default_type 'text/plain';
+                content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        for line in io.lines("/root/masterkey") do
+                                line = string.sub(line, 1, 8)
+                                if key == line then
+                                        ngx.exit(200)
+                                end
+                        end
+                        ngx.exit(403)
+                ';
+	}
+
+	location /genkey {
+		default_type 'text/plain';
+		content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/masterauth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+			local user = args["user"]
+			if not user then
+				ngx.say("you must define user")
+				ngx.exit(200)
+			end
+                        local handle = io.popen("/usr/local/bin/genkey")
+                        local genkey = handle:read("*a")
+			genkey = string.sub(genkey, 1, 8)
+                        local file = io.open("/root/key","a")
+                        file:write(genkey .. "\\t" .. user .. "\\n")
+                        file:close()
+			ngx.say("name: " .. user)
+			ngx.say("key: " .. genkey)
+		';
+	}
+
+	location /delkey {
+                default_type 'text/plain';
+                content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/masterauth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+                        local user = args["user"]
+                        if not user then
+                                ngx.say("you must define user")
+                                ngx.exit(200)
+                        end
+			cmd = "sed -i \'/" .. user .. "/d\' /root/key"
+			--ngx.say(cmd)
+			os.execute(cmd)
+			ngx.say("user " .. user .. " deleted")
+		';
+	}
+
+	location /showuser {
+		default_type 'text/plain';
+		content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/masterauth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+                        local handle = io.popen("cat /root/key")
+                        local res = handle:read("*a")
+                        ngx.say(res)
+		';
+	}
+			
+
+	location /banip {
+		default_type 'text/plain';
+		content_by_lua '
+			local args = ngx.req.get_uri_args()
+			local key = args["key"]
+			local auth = ngx.location.capture("/auth?key=" .. key)
+			if auth.status == ngx.HTTP_FORBIDDEN then
+				ngx.exit(403)
+			end
+			local ip = args["ip"]
+			local index = 1
+			local ipObj = {}
+			for token in string.gmatch(ip,"[0-9]+") do
+				if tonumber(token) > 255 then
+					ngx.exit(200)
+				end
+				ipObj[index] = tonumber(token)
+				index = index + 1
+			end
+			if not ipObj[4] or ipObj[6] then
+				ngx.exit(200)
+			end
+			if ipObj[1] == 127 then
+				ngx.exit(200)
+			end
+			if ipObj[5] and ipObj[5] <= 20 then
+				ngx.exit(200)
+			end
+			local file = io.open("/root/banip","a")
+			file:write(ip)
+			file:write("\\n")
+			file:close()
+			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
+			os.execute(cmd)
+			--ngx.say(cmd)
+			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
+			os.execute(cmd)
+			--ngx.say(cmd)
+			ngx.say(ip .. " baned")
+		';
+	}
+        location /unbanip {
+		more_set_headers 'Content-Type: text/plain';
+                content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/auth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+                        local ip = args["ip"]
+                        local index = 1
+                        local ipObj = {}
+                        for token in string.gmatch(ip,"[0-9]+") do
+                                if tonumber(token) > 255 then
+                                        ngx.exit(200)
+                                end
+                                ipObj[index] = tonumber(token)
+                                index = index + 1
+                        end
+                        if not ipObj[4] or ipObj[6] then
+                                ngx.exit(200)
+                        end
+                        if ipObj[1] == 127 then
+                                ngx.exit(200)
+                        end
+                        if ipObj[5] and ipObj[5] <= 20 then
+                                ngx.exit(200)
+                        end
+                        local file = io.open("/root/banip","a")
+                        file:write(ip)
+                        file:write("\\n")
+                        file:close()
+                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
+                        os.execute(cmd)
+                        --ngx.say(cmd)
+                        cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
+                        os.execute(cmd)
+                        --ngx.say(cmd)
+                        ngx.say(ip .. " unbaned")
+                ';
+        }
+	location /showip {
+		default_type 'text/plain';
+		content_by_lua '
+			local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/auth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+			local handle = io.popen("/sbin/service iptables status")
+			local res = handle:read("*a")
+			ngx.say(res)
+		';
+	}
+	location /serverlog {
+		default_type 'text/html';
+		content_by_lua '
+			local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+			local admin = 0
+			if key then
+                        	local auth = ngx.location.capture("/auth?key=" .. key)
+                        	if auth.status == ngx.HTTP_FORBIDDEN then
+                                	admin = 0
+				else
+					admin = 1
+                        	end
+			end
+			local agent = ngx.var.http_user_agent
+			local num = args["num"]
+			num = tonumber(num)
+			if not num and string.match(agent,"Mobile") then
+				num = 32
+			elseif not num then
+				num = 100
+			end
+			if num > 100000 then
+				ngx.say("num too big")
+				ngx.exit(200)
+			end
+			local grepor = args["grepor"]
+			local greporcmd = "\\|egrep \\"("
+			if grepor then
+				for token in string.gmatch(grepor, "[%w%[%]%:%-%?\\\%%%.]+") do
+					greporcmd = greporcmd .. token .. "\|"
+				end
+				greporcmd = string.sub(greporcmd, 1, -2)
+				greporcmd = greporcmd .. ")\\""
+			else
+				greporcmd = ""
+			end
+			local grepand = args["grepand"]
+			local grepandcmd = ""
+			if grepand then
+				for token in string.gmatch(grepand, "[%w%[%]%:%-%?\\\%%%.]+") do
+					grepandcmd = grepandcmd .. "|egrep \\"" .. token .. "\\""
+				end
+			else
+				grepandcmd = ""
+			end
+			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE" .. greporcmd .. grepandcmd
+			--ngx.say(cmd)
+			local handle = io.popen(cmd)
+			local res = handle:read("*a")
+			if string.match(agent,"curl") then
+				ngx.say(res)
+			else
+				local filename = os.tmpname()
+				filename = "/dev/shm" .. filename
+				os.execute("mkdir -p /dev/shm/tmp")
+				local fh = io.open(filename,"w")
+				fh:write(res)
+				fh:close()
+				ngx.say("<html>")
+				ngx.say("<head><title>XGenCraft</title><meta http-equiv=\\"Refresh\\" content=\\"60\\">")
+				if num <= 500 then
+					ngx.say("<script type=\\"text/javascript\\">function moveWin(){window.scroll(0,10000);setTimeout(\\"moveWin();\\",10000);}</script>")
+				else
+					ngx.say("</head>")
+				end
+				if num <= 500 then
+					ngx.say("<body bgcolor=\\"333333\\" onLoad=\\"moveWin();\\">")
+				else
+					ngx.say("<body bgcolor=\\"333333\\">")
+				end
+				ngx.say("<font face=\\"arial\\" color=\\"FFFFF4\\">")
+				local mysql = require "resty.mysql"
+				local cjson = require "cjson"
+				local db, err = mysql:new()
+				db:set_timeout(1000)
+				local ok, err, errno, sqlstate = db:connect{
+					host = "127.0.0.1",
+					port = 3306,
+					database = "geoip",
+					user = "geo",
+					password = "",
+					compact_arrays = "true",
+					max_packet_size = 1024 * 1024 }
+				local sqlcmd = ""
+				for line in io.lines(filename) do
+					line = string.gsub(line,"%[0\;%d+\;%d+m","")
+					line = string.gsub(line,"%[m","")
+					if not string.match(line,"Connection timed out") then
+						if string.match(line,"/give ") then
+							ngx.say("<font color=\\"F3F781\\">" .. line .. "</font><br>")
+						elseif string.match(line,"issued server command") then
+							ngx.say("<font color=\\"8181F7\\">" .. line .. "</font><br>")
+						elseif string.match(line,"%[Prism%]") then
+							ngx.say("<font color=\\"FA5882\\">" .. line .. "</font><br>")
+						elseif string.match(line,"WARNING") then
+							ngx.say("<font color=\\"81F7F3\\"><strong>" .. line .. "</strong></font><br>")
+						elseif string.match(line,"AuthMe") then
+							ngx.say("<font color=\\"A4A4A4\\">" .. line .. "</font><br>")
+						elseif string.match(line,"/%d+%.%d+%.%d+%.%d+\:") then
+							line = string.gsub(line,"/(%d+%.%d+%.%d+%.%d+)\:","/<font color=\\"FF0000\\"><strong>%1</strong></font>\:")
+							ngx.say(line .. "<br>")
+							userip = string.match(line,"%d+%.%d+%.%d+%.%d+")
+							--ngx.say(userip .. "<br>")
+							sqlcmd = "select country, city from cache where ip = \\"" .. userip .. "\\""
+							res, err, errcode, sqlstate = db:query(sqlcmd)
+							if not res[1] then
+								sqlcmd = "select country, city from location where locId = \\(select locId from blocks where endIpNum >= inet_aton\\(\\"" .. userip .. "\\"\\) order by endIpNum asc limit 1\\)"
+								res, err, errno, sqlstate = db:query(sqlcmd)
+								sqlcmd = "insert into cache values \\(null,\\"" .. userip .. "\\",\\"" .. res[1][1] .. "\\",\\"" .. res[1][2] .. "\\"\\)"
+								--ngx.say(sqlcmd)
+								res, err, errcode, sqlstate = db:query(sqlcmd)
+								sqlcmd = "select country, city from cache where ip = \\"" .. userip .. "\\""
+								res, err, errcode, sqlstate = db:query(sqlcmd)
+							end
+							--ngx.say("location: " .. cjson.encode(res) .. "<br>")
+							ngx.say("country: " .. res[1][1] .. ". city: " .. res[1][2] .. ".<br>")
+						else
+							ngx.say(line .. "<br>")
+						end
+					end
+				end
+				local ok, err = db:set_keepalive(0, 100)
+				ngx.say("</font>")
+				ngx.say("</body></html>")
+				os.remove(filename)
+			end
+		';
+	}
+    location /test {
+        content_by_lua '
+            local mysql = require "resty.mysql"
+            local db, err = mysql:new()
+            if not db then
+                ngx.say("failed to instantiate mysql: ", err)
+                return
+            end
+
+            db:set_timeout(1000) -- 1 sec
+
+            local ok, err, errno, sqlstate = db:connect{
+                host = "127.0.0.1",
+                port = 3306,
+                database = "test",
+                user = "test",
+                password = "",
+                max_packet_size = 1024 * 1024 }
+
+            ngx.say("connected to mysql.")
+
+            res, err, errno, sqlstate =
+                db:query("create table cats "
+                         .. "(id serial primary key, "
+                         .. "name varchar(5))")
+
+            ngx.say("table cats created.")
+
+            res, err, errno, sqlstate =
+                db:query("insert into cats (name) "
+                         .. "values (\'Bob\'),(\'\'),(null)")
+            if not res then
+                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
+                return
+            end
+
+            ngx.say(res.affected_rows, " rows inserted into table cats ",
+                    "(last insert id: ", res.insert_id, ")")
+
+            res, err, errno, sqlstate =
+                db:query("select * from cats order by id asc")
+
+	    --ngx.say(res)
+            local cjson = require "cjson"
+            ngx.say("result: ", cjson.encode(res))
+
+            -- put it into the connection pool of size 100,
+            -- with 0 idle timeout
+            local ok, err = db:set_keepalive(0, 100)
+
+        ';
+    }
+}
