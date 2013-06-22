@@ -305,9 +305,7 @@ server {
 							ngx.say(line .. "<br>")
 							userip = string.match(line,"%d+%.%d+%.%d+%.%d+")
 							redkey = "ip:" .. userip .. ":country"
-							ngx.say(redkey)
 							local res, err = red:get(redkey)
-							ngx.say(res)
 							local country = ""
 							local city = ""
 							if res == ngx.null then
