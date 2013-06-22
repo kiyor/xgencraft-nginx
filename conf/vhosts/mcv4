@@ -1,4 +1,5 @@
-lua_package_path "/var/lib/github/lua-resty-mysql/lib/?.lua;;";
+lua_package_path "/var/lib/github/lua-resty-mysql/lib/?.lua;/var/lib/github/lua-resty-redis/lib/?.lua;";
+
 server {
 	listen	192.95.58.153:80;
 	server_name manager.xgencraft.com;
@@ -103,7 +104,6 @@ server {
 		';
 	}
 			
-
 	location /banip {
 		default_type 'text/plain';
 		content_by_lua '
@@ -141,12 +141,11 @@ server {
 			--ngx.say(cmd)
 			cmd = "/sbin/iptables -I INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
 			os.execute(cmd)
-			--ngx.say(cmd)
 			ngx.say(ip .. " baned")
 		';
 	}
         location /unbanip {
-		more_set_headers 'Content-Type: text/plain';
+		default_type 'text/plain';
                 content_by_lua '
                         local args = ngx.req.get_uri_args()
                         local key = args["key"]
@@ -179,10 +178,8 @@ server {
                         file:close()
                         cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 80 -j DROP"
                         os.execute(cmd)
-                        --ngx.say(cmd)
                         cmd = "/sbin/iptables -D INPUT -p tcp -s " .. ip .. " --dport 25565 -j DROP"
                         os.execute(cmd)
-                        --ngx.say(cmd)
                         ngx.say(ip .. " unbaned")
                 ';
         }
@@ -247,7 +244,6 @@ server {
 				grepandcmd = ""
 			end
 			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE" .. greporcmd .. grepandcmd
-			--ngx.say(cmd)
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
 			if string.match(agent,"curl") then
@@ -272,6 +268,11 @@ server {
 					ngx.say("<body bgcolor=\\"333333\\">")
 				end
 				ngx.say("<font face=\\"arial\\" color=\\"FFFFF4\\">")
+				local redis = require "resty.redis"
+				local red = redis:new()
+				red:set_timeout(1000)
+				local ok, err = red:connect("127.0.0.1", 6379)
+				local redkey = ""
 				local mysql = require "resty.mysql"
 				local cjson = require "cjson"
 				local db, err = mysql:new()
@@ -303,20 +304,28 @@ server {
 							line = string.gsub(line,"/(%d+%.%d+%.%d+%.%d+)\:","/<font color=\\"FF0000\\"><strong>%1</strong></font>\:")
 							ngx.say(line .. "<br>")
 							userip = string.match(line,"%d+%.%d+%.%d+%.%d+")
-							--ngx.say(userip .. "<br>")
-							sqlcmd = "select country, city from cache where ip = \\"" .. userip .. "\\""
-							res, err, errcode, sqlstate = db:query(sqlcmd)
-							if not res[1] then
+							redkey = "ip:" .. userip .. ":country"
+							ngx.say(redkey)
+							local res, err = red:get(redkey)
+							ngx.say(res)
+							local country = ""
+							local city = ""
+							if res == ngx.null then
+								ngx.say("not found")
 								sqlcmd = "select country, city from location where locId = \\(select locId from blocks where endIpNum >= inet_aton\\(\\"" .. userip .. "\\"\\) order by endIpNum asc limit 1\\)"
 								res, err, errno, sqlstate = db:query(sqlcmd)
-								sqlcmd = "insert into cache values \\(null,\\"" .. userip .. "\\",\\"" .. res[1][1] .. "\\",\\"" .. res[1][2] .. "\\"\\)"
-								--ngx.say(sqlcmd)
-								res, err, errcode, sqlstate = db:query(sqlcmd)
-								sqlcmd = "select country, city from cache where ip = \\"" .. userip .. "\\""
-								res, err, errcode, sqlstate = db:query(sqlcmd)
+								redkey = "ip:" .. userip .. ":country"
+								ok, err = red:set(redkey, res[1][1])
+								redkey = "ip:" .. userip .. ":city"
+								ok, err = red:set(redkey, res[1][2])
 							end
-							--ngx.say("location: " .. cjson.encode(res) .. "<br>")
-							ngx.say("country: " .. res[1][1] .. ". city: " .. res[1][2] .. ".<br>")
+							redkey = "ip:" .. userip .. ":country"
+							local res, err = red:get(redkey)
+							country = res
+							redkey = "ip:" .. userip .. ":city"
+							local res, err = red:get(redkey)
+							city = res
+							ngx.say("country: " .. country .. ". city: " .. city .. ".<br>")
 						else
 							ngx.say(line .. "<br>")
 						end
@@ -329,56 +338,4 @@ server {
 			end
 		';
 	}
-    location /test {
-        content_by_lua '
-            local mysql = require "resty.mysql"
-            local db, err = mysql:new()
-            if not db then
-                ngx.say("failed to instantiate mysql: ", err)
-                return
-            end
-
-            db:set_timeout(1000) -- 1 sec
-
-            local ok, err, errno, sqlstate = db:connect{
-                host = "127.0.0.1",
-                port = 3306,
-                database = "test",
-                user = "test",
-                password = "",
-                max_packet_size = 1024 * 1024 }
-
-            ngx.say("connected to mysql.")
-
-            res, err, errno, sqlstate =
-                db:query("create table cats "
-                         .. "(id serial primary key, "
-                         .. "name varchar(5))")
-
-            ngx.say("table cats created.")
-
-            res, err, errno, sqlstate =
-                db:query("insert into cats (name) "
-                         .. "values (\'Bob\'),(\'\'),(null)")
-            if not res then
-                ngx.say("bad result: ", err, ": ", errno, ": ", sqlstate, ".")
-                return
-            end
-
-            ngx.say(res.affected_rows, " rows inserted into table cats ",
-                    "(last insert id: ", res.insert_id, ")")
-
-            res, err, errno, sqlstate =
-                db:query("select * from cats order by id asc")
-
-	    --ngx.say(res)
-            local cjson = require "cjson"
-            ngx.say("result: ", cjson.encode(res))
-
-            -- put it into the connection pool of size 100,
-            -- with 0 idle timeout
-            local ok, err = db:set_keepalive(0, 100)
-
-        ';
-    }
 }
