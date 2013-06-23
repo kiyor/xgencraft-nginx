@@ -109,6 +109,9 @@ server {
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
 			local ip = args["ip"]
+			if ip == "" then
+				ip = ngx.var.remote_addr
+			end
 			local index = 1
 			local ipObj = {}
                         for token in string.gmatch(ip,"[0-9]+") do
