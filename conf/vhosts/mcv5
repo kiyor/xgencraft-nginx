@@ -164,6 +164,7 @@ server {
 			local res, err = red:get(redkey)
 			city = res
 			ngx.say("country: " .. country .. ". city: " .. city ".")
+		';
 	}
 			
 	location /banip {
