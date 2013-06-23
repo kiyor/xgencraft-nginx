@@ -243,7 +243,7 @@ server {
 			else
 				grepandcmd = ""
 			end
-			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE" .. greporcmd .. grepandcmd
+			local cmd = "tail -n " .. num .. " /home/mc/mc/server.log|grep -v /LOGIN|grep -v /CHANGE|grep -v /chang" .. greporcmd .. grepandcmd
 			local handle = io.popen(cmd)
 			local res = handle:read("*a")
 			if string.match(agent,"curl") then
