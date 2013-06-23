@@ -109,7 +109,7 @@ server {
 		content_by_lua '
 			local args = ngx.req.get_uri_args()
 			local ip = args["ip"]
-			if ip == "" then
+			if not ip then
 				ip = ngx.var.remote_addr
 			end
 			local index = 1
@@ -167,6 +167,34 @@ server {
 			local res, err = red:get(redkey)
 			city = res
 			ngx.say("country: " .. country .. ". city: " .. city .. ".")
+		';
+	}
+
+	location /updateip {
+		default_type 'text/plain';
+		content_by_lua '
+                        local args = ngx.req.get_uri_args()
+                        local key = args["key"]
+                        local auth = ngx.location.capture("/auth?key=" .. key)
+                        if auth.status == ngx.HTTP_FORBIDDEN then
+                                ngx.exit(403)
+                        end
+                        local ip = args["ip"]
+                        if not ip then
+                                ip = ngx.var.remote_addr
+                        end
+			local city = args["city"]
+			if not city then
+				ngx.say("you need define city")
+				ngx.exit(200)
+			end
+			local redis = require "resty.redis"
+			local red = redis:new()
+			red:set_timeout(1000)
+                        local ok, err = red:connect("127.0.0.1", 6379)
+                        redkey = "ip:" .. ip .. ":city"
+			ok, err = red.set(redkey, city)
+			ngx.say("updated " .. ip .. " " .. city)
 		';
 	}
 			
