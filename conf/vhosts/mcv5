@@ -135,28 +135,28 @@ server {
 			local res, err = red:get(redkey)
 			local country = ""
 			local city = ""
-			if res == ngx.null then
-                                local mysql = require "resty.mysql"
-                                local cjson = require "cjson"
-                                local db, err = mysql:new()
-                                db:set_timeout(1000)
-                                local ok, err, errno, sqlstate = db:connect{
-                                        host = "127.0.0.1",
-                                        port = 3306,
-                                        database = "geoip",
-                                        user = "geo",
-                                        password = "",
-                                        compact_arrays = "true",
-                                        max_packet_size = 1024 * 1024 }
-                                local sqlcmd = ""
-				ngx.say("not found, read database\\n")
-				sqlcmd = "select country, city from location where locId = \\(select locId from blocks where endIpNum >= inet_aton\\(\\"" .. userip .. "\\"\\) order by endIpNum asc limit 1\\)"
-				res, err, errno, sqlstate = db:query(sqlcmd)
-				redkey = "ip:" .. userip .. ":country"
-				ok, err = red:set(redkey, res[1][1])
-				redkey = "ip:" .. userip .. ":city"
-				ok, err = red:set(redkey, res[1][2])
-			end
+			--if res == ngx.null then
+                        --        local mysql = require "resty.mysql"
+                        --        local cjson = require "cjson"
+                        --        local db, err = mysql:new()
+                        --        db:set_timeout(1000)
+                        --        local ok, err, errno, sqlstate = db:connect{
+                        --                host = "127.0.0.1",
+                        --                port = 3306,
+                        --                database = "geoip",
+                        --                user = "geo",
+                        --                password = "",
+                        --                compact_arrays = "true",
+                        --                max_packet_size = 1024 * 1024 }
+                        --        local sqlcmd = ""
+			--	ngx.say("not found, read database\\n")
+			--	sqlcmd = "select country, city from location where locId = \\(select locId from blocks where endIpNum >= inet_aton\\(\\"" .. userip .. "\\"\\) order by endIpNum asc limit 1\\)"
+			--	res, err, errno, sqlstate = db:query(sqlcmd)
+			--	redkey = "ip:" .. userip .. ":country"
+			--	ok, err = red:set(redkey, res[1][1])
+			--	redkey = "ip:" .. userip .. ":city"
+			--	ok, err = red:set(redkey, res[1][2])
+			--end
 			redkey = "ip:" .. userip .. ":country"
 			local res, err = red:get(redkey)
 			country = res
