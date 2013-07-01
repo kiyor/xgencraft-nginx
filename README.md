@@ -48,6 +48,13 @@ unban
 显示当前iptables设定
 
     curl 'manager.xgencraft.com/showip?key={yourkey}'
+    
+更新ip的country city
+
+    curl 'manager.xgencraft.com/updateip?key={yourkey}&ip={ip}&city={city}&country={country}'
+    
+其中ip和country可以不填,ip不填默认为指令使用者ip,country不填默认为不修改
+
 
 #普通权限(无key要求)
 显示当前服务器记录500行(不输入数量默认为500行)
@@ -65,6 +72,13 @@ unban
 显示当前服务器记录1000行,带有关键字a或关键字b并且必须包含关键字c和关键字d
 
     curl 'manager.xgencraft.com/serverlog?num=1000&grepor=a,b&grepand=c,d'
+    
+查询ip所在地
+
+    curl 'manager.xgencraft.com/ip=ip{ip}'
+
+以上指令不填写ip则为显示使用者ip所在地
+
 
 **以上服务器记录指令可以任意组合**
 
