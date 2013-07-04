@@ -175,9 +175,14 @@ server {
 		content_by_lua '
                         local args = ngx.req.get_uri_args()
                         local key = args["key"]
+			if not key then
+				ngx.say("key required")
+				ngx.exit(200)
+			end
                         local auth = ngx.location.capture("/auth?key=" .. key)
                         if auth.status == ngx.HTTP_FORBIDDEN then
-                                ngx.exit(403)
+                                ngx.say("key failed")
+				ngx.exit(403)
                         end
                         local ip = args["ip"]
                         if not ip then
@@ -188,13 +193,21 @@ server {
 				ngx.say("you need define city")
 				ngx.exit(200)
 			end
+			local country = args["country"]
 			local redis = require "resty.redis"
 			local red = redis:new()
 			red:set_timeout(1000)
                         local ok, err = red:connect("127.0.0.1", 6379)
-                        redkey = "ip:" .. ip .. ":city"
-			ok, err = red.set(redkey, city)
-			ngx.say("updated " .. ip .. " " .. city)
+			if country then
+                        	redkey = "ip:" .. ip .. ":country"
+				ok, err = red:set(redkey, country)
+			end
+			redkey = "ip:" .. ip .. ":city"
+			ok, err = red:set(redkey, city)
+			redkey = "ip:" .. ip .. ":country"
+			res, err = red:get(redkey)
+			country = res
+			ngx.say("updated " .. ip .. " " .. country .. " " .. city)
 		';
 	}
 			
