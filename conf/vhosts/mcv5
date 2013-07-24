@@ -4,6 +4,7 @@ server {
 	listen	192.95.58.153:80;
 	server_name manager.xgencraft.com;
 	charset UTF-8;
+	lua_code_cache on;
         location / {
         }
 
